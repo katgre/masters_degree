@@ -23,6 +23,10 @@ def Substract(direction, camname):
 
   Dark_Master = ccdproc.CCDData.read(f'{direction}/Master_Dark_{camname}.fits', unit="adu")
   Flat_Master = ccdproc.CCDData.read(f'{direction}/Master_Flat_{camname}.fits', unit="adu")
+  
+  # Converting Mask to bool - for a later use in images
+  mask_ccdmask = CCDData.read(f'{direction}/Dark_Mask_{camname}.fits', unit=u.dimensionless_unscaled)
+  mask_ccdmask.data = mask_ccdmask.data.astype('bool')
 
   # Folder for the reduced images - in case something goes bad
   directory_reduced_raw = f'{direction}/reduced_raw'
@@ -34,14 +38,17 @@ def Substract(direction, camname):
       if not (img.header['OBJECT'] == 'flat' or img.header['OBJECT'] == 'dark' or img.header['OBJECT'] == 'sky' or img.header['OBJECT'] == 'Seeing' or img.header['OBJECT'] == 'eng423' or img.header['OBJECT'] == 'eng428' or img.header['OBJECT'] == 'test_flat') and (img.header['CAMNAME'] == camname):
         img_substracted_dark = ccdproc.subtract_dark(img, Dark_Master, dark_exposure=astropy.units.Quantity(Dark_Master.header['ITIME']), data_exposure=astropy.units.Quantity(img.header['ITIME']), exposure_unit=u.second)
         img_substracted_dark_corr_flat = ccdproc.flat_correct(img_substracted_dark, Flat_Master)
-        img_substracted_dark_corr_flat_name = f'{file}'
+        img_substracted_dark_corr_flat_masked = ccdproc.CCDData(img_substracted_dark_corr_flat, unit="adu", mask=mask_ccdmask.data)
+        
+        img_substracted_dark_corr_flat_masked.meta['combined'] = True
+        img_substracted_dark_corr_flat_masked_name = f'{file}'
 
         # If the files already existed
-        if os.path.exists(f'{directory_reduced_raw}/{img_substracted_dark_corr_flat_name}'):
-          os.remove(f'{directory_reduced_raw}/{img_substracted_dark_corr_flat_name}')
-          img_substracted_dark_corr_flat.write(f'{directory_reduced_raw}/{img_substracted_dark_corr_flat_name}')
+        if os.path.exists(f'{directory_reduced_raw}/{img_substracted_dark_corr_flat_masked_name}'):
+          os.remove(f'{directory_reduced_raw}/{img_substracted_dark_corr_flat_masked_name}')
+          img_substracted_dark_corr_flat_masked.write(f'{directory_reduced_raw}/{img_substracted_dark_corr_flat_masked_name}')
         else:
-          img_substracted_dark_corr_flat.write(f'{directory_reduced_raw}/{img_substracted_dark_corr_flat_name}')
+          img_substracted_dark_corr_flat_masked.write(f'{directory_reduced_raw}/{img_substracted_dark_corr_flat_masked_name}')
 
     # Masks do not have an OBJECT attribute and make an error
     except KeyError: 
