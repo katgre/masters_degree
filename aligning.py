@@ -23,14 +23,17 @@ import glob
 import warnings
 warnings.filterwarnings("ignore")
 
+# For aligning images (and their masks) properly
 def align(image, image0):
 
   image_ccd = ccdproc.CCDData.read(image, unit='adu')
   image0_ccd = ccdproc.CCDData.read(image0, unit='adu')
 
-  image_registered, footprint2 = astroalign.register(image_ccd, image0_ccd, propagate_mask=True)
+  image_registered, footprint = astroalign.register(image_ccd, image0_ccd, propagate_mask=True)
 
-  return image_registered
+  new_image = ccdproc.CCDData(image_registered, unit='adu', mask=footprint)
+
+  return new_image
 
 def align_combine(direction, object_name, camname):
 
@@ -67,6 +70,7 @@ def align_combine(direction, object_name, camname):
   outfile.close()
   return None
 
+# List of objects for aligning
 object_name_2021jun02 = ['OB121396', 'OB151200', 'OB151044', 'OB161043']
 object_name_2021jun03 = ['OB151044', 'OB121073', 'OB110284', 'BLG512_18_22725', 'OB161043', 'EROS-GSA15', 'Gaia21bfr']
 camnames = ['narrow', 'wide']
