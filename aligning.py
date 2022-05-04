@@ -24,6 +24,10 @@ import glob
 import warnings
 warnings.filterwarnings("ignore")
 
+# For cosmicray_lacosmic function to work properly (https://github.com/astropy/ccdproc/issues/786)
+from packaging import version
+version.parse('1.1.0')
+
 def darkpoints_mask(new_image):
 
   # Creating a numpy array, so it can be worked on 
