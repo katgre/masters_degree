@@ -119,7 +119,3 @@ camnames = ['narrow', 'wide']
 for object_name in object_name_2021jun0203:
   for camname in camnames:
     align_combine('/content/drive/Shareddrives/Magisterka_materiały/', object_name, camname)
-
-for object_name in object_name_2021jun03:
-  for camname in camnames:
-    align_combine('/content/drive/Shareddrives/Magisterka_materiały/2021jun03/raw/reduced_raw', object_name, camname)
