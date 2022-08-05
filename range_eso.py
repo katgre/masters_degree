@@ -2,18 +2,22 @@ import numpy as np
 
 def range(name, ra, dec):
 
-  # the object is around in the middle of the fits file, however I've added an additional 20 arcsec buffer for the matching program
-  arcsec =  0.011111 # 40 arcsec
+  # the object is around in the middle of the fits file , however I've added an additional 20 arcsec buffer 
+  arcsec =  0.00555556 # 20 arcsec
 
-  ra_min = ra - arcsec
-  ra_max = ra + arcsec
+  # the curvature of the Earth taken into account
+  ra_min = ra + (arcsec/np.cos(dec))
+  ra_max = ra - (arcsec/np.cos(dec))
 
   dec_min = dec - arcsec
   dec_max = dec + arcsec
 
-  # A format required for query constraints
+  # A format required for constraining the data 
   print(f'{name}')
-  print("RA: >{} & <{}".format(np.round(ra_min, 6), np.round(ra_max, 6)))
+  if ra_max > ra_min:
+    print("RA: >{} & <{}".format(np.round(ra_min, 6), np.round(ra_max, 6)))
+  else:
+    print("RA: >{} & <{}".format(np.round(ra_max, 6), np.round(ra_min, 6)))
   print("DEC: >{} & <{}".format(np.round(dec_min, 6), np.round(dec_max, 6)))
 
   return None
