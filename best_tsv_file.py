@@ -32,7 +32,7 @@ def fun(x):
 
 def best_H(name, file):
 
-  df=pd.read_csv(f'/content/drive/Shareddrives/Magisterka_materiały/H21_500.tsv',sep='\t')
+  df=pd.read_csv(f'{file}',sep='\t')
 
   # dropping every row that doesn't have a value in H1 nor in H2
   df = df.dropna(subset=['H_1APERMAG3', 'H_2APERMAG3'], how='all')
