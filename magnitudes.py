@@ -53,29 +53,11 @@ def outliers_average(X, Y, X_bad, Y_bad, i):
     i += 1
     return outliers_average(X_good, Y_good, X_bad, Y_bad, i)
 
-def outliers_median(X, Y, Y_sigma):
-
-  df_temp = pd.DataFrame(
-        {'X': X,
-        'Y': Y,
-        'Y_sigma': Y_sigma
-        })
-  
-  df_sorted = df_temp.sort_values(by=['Y'], ascending=False)
-
-  l = len(df_sorted) // 2
-
-  if len(df_sorted) % 2 == 0:
-    y_median = ((df_sorted['Y'][l] + df_sorted['Y'][l-1])/2.0)
-    sigma_y_median = np.sqrt(df_sorted['Y_sigma'][l]**2 + (df_sorted['Y_sigma'][l-1])**2)
-    return y_median
-  else:
-    y_median = df_sorted['Y'][l]
-    sigma_y_median = df_sorted['Y_sigma'][l]
-    return y_median
+def outliers_median(X, Y):
+  y_median = np.median(Y)
+  return y_median
   
 def outliers_mode(X, Y):
-
   y_mode = stats.mode(Y)
   return float(y_mode[0])
 
@@ -127,8 +109,8 @@ def sorting(star):
 
   print(f'{star}:')
   X, Y, y_average, sigma_y_average, X_bad, Y_bad = outliers_average([vvv['H_APEERMAG3'][m] for m in df2['VVV']], Deltas_mag, X_bad, Y_bad, i)
-  y_median = outliers_median([vvv['H_APEERMAG3'][m] for m in df2['VVV']], Deltas_mag.flatten(), Deltas_sigma.flatten())
-  y_mode = outliers_mode([vvv['H_APEERMAG3'][m] for m in df2['VVV']], Deltas_mag.flatten())
+  y_median = outliers_median(X, Y)
+  y_mode = outliers_mode(X, Y)
 
   #print("{:.6} {:.6} {:.6} \n".format(star, y_average, sigma_y_average))
   outfile.write("{:.6} {:.6} {:.6} \n".format(star, y_average, sigma_y_average))
