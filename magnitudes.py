@@ -3,42 +3,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
 
-# Creating file with average magniture difference
-open('magnitudes_wide.txt', 'w').close()
-outfile = open(f'magnitudes_wide.txt', "a")
+open('magnitudes_narrow.txt', 'w').close()
+outfile = open(f'magnitudes_narrow.txt', "a")
 outfile.write("Object Delta_mag Delta_error \n")
 
-# Calculating magnitude's difference between objects from VVV catalog and found by SexTractor
 def fun_mag(x, wide, vvv):
-
   Deltas_mag = []
   delta_mag = (vvv['H_APEERMAG3'][x[0]]) - (wide['H_APEERMAG3'][x[1]])
   Deltas_mag.append(delta_mag)
-
   return Deltas_mag
 
-def fun_sigma(x, wide, vvv):
-
-  Deltas_sigma = []
-
-  delta_sigma = np.sqrt((vvv['H_APERMAG3ERR'][x[0]])**2 + (wide['H_APERMAG3ERR'][x[1]]**2))
-  
-  Deltas_sigma.append(delta_sigma)
-
-  return Deltas_sigma
-
-# Detecting outliers in graph mag_VVV/delta_mag - AVERAGE
-def outliers_average(X, Y, X_bad, Y_bad, i):
+def outliers_median(X, Y, X_bad, Y_bad, i):
 
   X_good, Y_good = [], []
-  y_average = np.average(Y)
-  sigma_y_average = np.sqrt(np.sum([(y - y_average)**2 for y in Y])/((len(Y)-1)*len(Y)))
+  y_median = np.median(Y)
 
-  # sigma2_test = np.std(X)
-  sigma = np.sqrt(np.sum([(y - y_average)**2 for y in Y])/len(Y))
+  # median absolute deviation
+  k = 4.4478 # pkty dalsze niż 3*sigma
+  MAD = np.median([np.abs(y - y_median) for y in Y])
 
   for n in range(len(Y)):
-    if abs(Y[n] - y_average) < 3*sigma:
+    if (abs(Y[n] - y_median) < k*MAD):
       X_good.append(X[n])
       Y_good.append(Y[n])
     else:
@@ -46,86 +31,62 @@ def outliers_average(X, Y, X_bad, Y_bad, i):
       Y_bad.append(Y[n])
 
   if len(Y) == len(Y_good):
-    print('Finishing {} iteration: σ = {:.5}, f(x) = {:.6} ± {:.2}, number of outliers: {}'.format(i, sigma, y_average, sigma_y_average, len(X_bad)))
-    return X, Y, y_average, sigma_y_average, X_bad, Y_bad
+    print('Finishing {} iteration: MAD = {:.5}, f(x) = {:.6} ± {:.2}, number of outliers: {}'.format(i, MAD, y_median, MAD, len(Y_bad)))
+    return X, Y, y_median, MAD, X_bad, Y_bad
   else:
-    print('Iteration {}: σ = {:.5}, f(x) = {:.7} ± {:.2}, number of outliers: {}'.format(i, sigma, y_average, sigma_y_average, len(X_bad)))
+    print('Iteration {}: σ = {:.5}, f(x) = {:.7} ± {:.2}, number of outliers: {}'.format(i, MAD, y_median, MAD, len(Y_bad)))
     i += 1
-    return outliers_average(X_good, Y_good, X_bad, Y_bad, i)
+    return outliers_median(X_good, Y_good, X_bad, Y_bad, i)
 
-def outliers_median(X, Y):
-  y_median = np.median(Y)
   return y_median
-  
-def outliers_mode(X, Y):
-  y_mode = stats.mode(Y)
-  return float(y_mode[0])
 
 def sorting(star):
 
-  wide = pd.read_csv(f'../{star}_narrow_H.tsv', sep = '\t')
+  wide = pd.read_csv(f'../{star}_narrow_H.tsv', sep = '\t') 
   vvv = pd.read_csv(f'../{star}_wide_H.tsv', sep = '\t')
 
-  df = pd.DataFrame(columns = ['vvv', 'wide', 'delta'])
+  wide = wide[wide.H_APEERMAG3<(-14.2)] 
+  # obiekty z VVV nie mają jasności mniejszej niż ~ 14.2, potem tylko szum
 
-  VVV, WIDE, DELTA = [], [], []
-  VVV_fin, WIDE_fin, DELTA_fin = [], [], []
+  WIDE, VVV = [], []
 
-  for i in range(len(wide)):
-    if (wide['H_APEERMAG3'][i] < (-14.2)):
-      for j in range(len(vvv)):
-        delta_RA = wide['RA2000'][i] - vvv['RA2000'][j]
-        delta_DEC = wide['DEC2000'][i] - vvv['DEC2000'][j]
-        delta = np.sqrt((delta_RA * np.cos(wide['DEC2000'][i]))**2 + (delta_DEC)**2)
+  def delta(wide_row):
+    delta_ra = vvv['RA2000']-row['RA2000']
+    delta_dec = vvv['DEC2000']-row['DEC2000']
+    return np.sqrt((delta_ra*np.cos(vvv['DEC2000']))**2+
+                   (delta_dec)**2)
 
-        WIDE.append(i)
-        VVV.append(j)
-        DELTA.append(delta)
+  for i, row in wide.iterrows():
+    # i - indeks wide
+    # indeks vvv'a ktory ma ra i dec najblizej narrowa[i]
+    j = np.argmin(delta(row))
+    WIDE.append(i)
+    VVV.append(j)
 
-      df = pd.DataFrame(
-        {'VVV': VVV,
-        'WIDE': WIDE,
-        'DELTA': DELTA
-        })
-
-      delta_fin = df[df.DELTA == df.DELTA.min()]
-      VVV_fin.append(int(delta_fin['VVV']))
-      WIDE_fin.append(int(delta_fin['WIDE']))
-      DELTA_fin.append(float(delta_fin['DELTA']))
-
-      VVV, WIDE, DELTA = [], [], []
-
-    df2 = pd.DataFrame(
-        {'VVV': VVV_fin,
-        'WIDE': WIDE_fin,
-        'DELTA': DELTA_fin
-        })
-
-  Deltas_mag = np.apply_along_axis(lambda x: fun_mag(x, wide, vvv), 1, df2)
-  Deltas_sigma = np.apply_along_axis(lambda x: fun_sigma(x, wide, vvv), 1, df2)
+  df = pd.DataFrame(
+    {'VVV': VVV,
+    'WIDE': WIDE,
+    })
+  
+  Deltas_mag = np.apply_along_axis(lambda x: fun_mag(x, wide, vvv), 1, df)
 
   X_bad, Y_bad = [], []
   i = 0
 
   print(f'{star}:')
-  X, Y, y_average, sigma_y_average, X_bad, Y_bad = outliers_average([vvv['H_APEERMAG3'][m] for m in df2['VVV']], Deltas_mag, X_bad, Y_bad, i)
-  y_median = outliers_median(X, Y)
-  y_mode = outliers_mode(X, Y)
+  X, Y, y_median, MAD, X_bad, Y_bad = outliers_median([vvv['H_APEERMAG3'][m] for m in df['VVV']], Deltas_mag.flatten(), X_bad, Y_bad, i)
 
-  #print("{:.6} {:.6} {:.6} \n".format(star, y_average, sigma_y_average))
-  outfile.write("{:.6} {:.6} {:.6} \n".format(star, y_average, sigma_y_average))
+  outfile.write("{:.6} {:.6} {:.6} \n".format(star, y_median, MAD))
 
-  plt.plot(X, Y, "*", color = 'dimgray', label = 'fitted - average')
-  plt.plot(X_bad, Y_bad, "*", color = 'lightgray', label = "outliers - average")
-  plt.plot(X, [y_average for x in X], label = f"average: {np.round(y_average, 5)} ± {np.round(sigma_y_average, 5)} ", color = 'deepskyblue')
-  plt.plot(X, [y_median for x in X], label = f"median: {np.round(y_median, 5)}", color = 'crimson')
-  plt.plot(X, [y_mode for x in X], label = f"mode: {np.round(y_mode, 5)}", color = 'coral')
-  plt.gca().invert_xaxis()
-  plt.xlabel('wide')
-  plt.ylabel(r'$\Delta \, $mag')
-  plt.title(f'{star}')
+  plt.plot(X, Y, "*", color = 'dimgray', label = 'fitted')
+  plt.plot(X_bad, Y_bad, "*", color = 'lightgray', label = "outliers")
+  plt.plot([vvv['H_APEERMAG3'][m] for m in df['VVV']], [y_median for x in df['VVV']], label = f"median: {np.round(y_median, 5)} ± {np.round(MAD, 5)} mag", color = 'royalblue')
   plt.legend()
   plt.grid()
+  plt.xlabel('VVV')
+  plt.ylabel(r'$\Delta \, $mag')
+  plt.title(f'{star}')
+  plt.gca().invert_xaxis()
   plt.savefig(f'{star}_wide.png')
   plt.clf()
 
@@ -135,5 +96,3 @@ stars = ['OB121396', 'OB151200', 'OB121073', 'OB110284', 'OB151044', 'BLG512_18_
 
 for star in stars:
   sorting(star)
-
-outfile.close()
