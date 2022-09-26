@@ -85,7 +85,7 @@ def sorting(star):
   plt.grid()
   plt.xlabel('VVV')
   plt.ylabel(r'$\Delta \, $mag')
-  plt.title(f'{star}')
+  plt.title(f'{star} - wide')
   plt.gca().invert_xaxis()
   plt.savefig(f'{star}_wide.png')
   plt.clf()
